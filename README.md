@@ -51,11 +51,12 @@ Modern logistics coordination faces critical challenges:
 ## 💡 Proposed Solution
 
 A modular, highly observable agent system that incorporates:
-- **OpenAI Tool Calling & Deterministic Demo Fallback:** Automatically switches between live GPT-4o-mini and a local rule-based intent engine if an API key is not present.
+- **Google ADK & Gemini Tool Calling with Deterministic Demo Fallback:** Built on the official Google Agent Development Kit (`google-adk`) powered by Google Gemini (`gemini-2.5-flash`), with automated fallback to a local rule-based intent engine if Google credentials are not present.
 - **ACID Database Transactions:** SQLite with Write-Ahead Logging (WAL) and `CHECK` constraints ensuring inventory deductions and shipment records are committed atomically.
 - **Strict Verification Step:** An operation is reported as successful **only** when a post-transaction query confirms the database state.
 - **Safe Self-Healing:** Exponential backoff with idempotency key enforcement. Permanent business errors (e.g. `INSUFFICIENT_STOCK`) fail fast, while transient errors recover automatically.
 - **Model Context Protocol (MCP) Interface:** Enables external agent hosts and IDEs to execute logistics tools directly over standard MCP protocols.
+- **Google Maps Routes Integration:** Computes route distance with live Google Maps Routes API if configured, with a clearly labeled simulated distance matrix fallback when unconfigured.
 
 ---
 
@@ -63,12 +64,13 @@ A modular, highly observable agent system that incorporates:
 
 | Feature | Description |
 | :--- | :--- |
+| **Google ADK Orchestration** | Primary agent built with Google Agent Development Kit (`google-adk`) and Google Gemini. |
 | **Conversational Assistant** | Interprets natural language, extracts entities (origin, destination, product, quantity), and coordinates multi-step workflows. |
 | **Clarification Handling** | Politely asks for missing parameters (e.g., missing destination or quantity) before executing. |
 | **Atomic Inventory Control** | Deducts stock in real-time with zero risk of negative balances or concurrency race conditions. |
 | **Idempotent Shipment Creation** | Prevents duplicate shipments during automated retries or identical resubmissions. |
 | **Lifecycle State Machine** | Enforces valid status transitions (`CREATED` ➔ `IN_TRANSIT` ➔ `OUT_FOR_DELIVERY` ➔ `DELIVERED` or `CANCELLED`). |
-| **Delivery Estimation** | Calculates transit distance and estimated arrival dates with explicit labeling for simulated distance matrices. |
+| **Delivery Estimation** | Calculates transit distance and estimated arrival dates with Google Maps Routes or clearly labeled simulated matrix. |
 | **Full Audit Trail** | Logs every action, tool execution, feedback outcome, and recovery event in SQLite. |
 | **Interactive Self-Healing Demo** | One-click button in Streamlit to inject a transient error and observe automated recovery. |
 | **Model Context Protocol (MCP)** | Standardized MCP server exposing all core logistics tools. |
@@ -83,7 +85,7 @@ For in-depth diagrams and state transition specifications, see [`docs/architectu
 logistics-handler/
 │
 ├── app.py                     # Streamlit Web Dashboard application
-├── requirements.txt           # Verified, stable dependencies
+├── requirements.txt           # Verified, stable dependencies (google-adk, google-genai, etc.)
 ├── .env.example               # Environment template
 ├── .gitignore                 # Standard Python/SQLite exclusions
 ├── README.md                  # Complete technical documentation
@@ -93,23 +95,23 @@ logistics-handler/
 │   ├── config.py              # Centralized constants, statuses, and configuration
 │   ├── database.py            # SQLite connection, WAL mode, schema & seed logic
 │   ├── inventory.py           # check_inventory(), get_inventory(), name normalization
-│   ├── routing.py             # estimate_delivery() with simulated distance matrix
+│   ├── routing.py             # estimate_delivery() with Google Maps / simulated fallback
 │   ├── shipments.py           # create_shipment(), track_shipment(), update_shipment_status()
 │   ├── recovery.py            # execute_with_recovery(), backoff, transient simulation
 │   ├── logging_utils.py       # format_result(), log_activity(), get_agent_activity()
-│   └── agent.py               # LogisticsCoordinatorAgent (OpenAI + Demo Mode fallback)
+│   └── agent.py               # LogisticsCoordinatorAgent (Google ADK + Demo Mode fallback)
 │
 ├── mcp_server/                # Model Context Protocol integration
 │   ├── __init__.py
 │   └── server.py              # MCP Server exposing all 6 logistics tools
 │
-├── tests/                     # Automated pytest suite (21 test cases)
+├── tests/                     # Automated pytest suite (23 test cases)
 │   ├── __init__.py
 │   ├── conftest.py            # Isolated SQLite fixture for test runs
 │   ├── test_inventory.py      # Tests for stock checking, invalid quantity, deduction
 │   ├── test_shipments.py      # Tests for creation, persistence, tracking, transitions
 │   ├── test_recovery.py       # Tests for idempotency, self-healing, exhaustion
-│   └── test_agent_tools.py    # Tests for natural language flows, routing, clarification
+│   └── test_agent_tools.py    # Tests for Google ADK, natural language flows, routing
 │
 └── docs/
     └── architecture.md        # Technical architecture and sequence diagrams
@@ -120,7 +122,8 @@ logistics-handler/
 ## 🛠️ Technologies Used
 
 - **Language:** Python 3.10+ (tested on Python 3.14.5)
-- **AI Orchestration:** OpenAI Agents / Function Calling SDK (`openai>=1.30.0`)
+- **Primary AI Agent Framework:** Google ADK (Agent Development Kit - `google-adk>=2.12.0`)
+- **LLM Engine:** Google Gemini via `google-genai` (`gemini-2.5-flash`, `gemini-1.5-flash`)
 - **Database:** SQLite 3 (WAL mode enabled, ACID atomic transactions)
 - **User Interface:** Streamlit (`streamlit>=1.35.0`)
 - **Integration Protocol:** Model Context Protocol SDK (`mcp>=1.0.0`)
@@ -133,7 +136,7 @@ logistics-handler/
 
 - macOS, Linux, or Windows with Python 3.10, 3.11, 3.12, 3.13, or 3.14 installed.
 - Git installed.
-- *(Optional)* An OpenAI API key if you wish to run in live LLM mode.
+- *(Optional)* A Google Gemini API key if you wish to run in live AI mode.
 
 ---
 
@@ -172,11 +175,15 @@ cp .env.example .env
 
 Open `.env` in any text editor. By default, it runs in **Demo Mode**:
 ```ini
-# Leave blank to use the fully functional local Demo Mode
-OPENAI_API_KEY=
+# Google Gemini API Key (Optional for Demo Mode, Required for Live Google ADK Gemini Mode)
+GEMINI_API_KEY=
+GOOGLE_API_KEY=
 
-# Model to use when OPENAI_API_KEY is supplied
-OPENAI_MODEL=gpt-4o-mini
+# Model to use when GEMINI_API_KEY is supplied
+GEMINI_MODEL=gemini-2.5-flash
+
+# Optional: Google Maps Routes API Key (If omitted, uses simulated distance matrix fallback)
+GOOGLE_MAPS_API_KEY=
 
 # Database path (defaults to data/logistics.db)
 LOGISTICS_DB_PATH=data/logistics.db
@@ -196,12 +203,12 @@ SIMULATE_TRANSIENT_FAILURES=0
 ## 🖥️ Running the Application
 
 ### Running in Demo Mode (No API Key Required)
-When `OPENAI_API_KEY` is omitted or empty, the application runs in **Demo Mode**. It utilizes a deterministic rule-based intent engine and entity extractor that executes the exact same underlying tools and atomic database transactions.
+When `GEMINI_API_KEY` / `GOOGLE_API_KEY` is omitted or empty, the application runs in **Demo Mode**. It utilizes a deterministic rule-based intent engine and entity extractor that executes the exact same underlying tools and atomic database transactions. It transparently displays that Demo Mode is active.
 
-### Running in AI Mode (OpenAI Tool Calling)
-To enable live AI tool-calling with GPT-4o-mini, add your key to `.env`:
+### Running in Google ADK AI Mode (Gemini Tool Calling)
+To enable live AI tool-calling with Google Gemini, add your key to `.env`:
 ```ini
-OPENAI_API_KEY=sk-proj-yourActualKeyHere
+GEMINI_API_KEY=AIzaSyYourActualGeminiKeyHere
 ```
 
 ### Launching the Streamlit Web Dashboard

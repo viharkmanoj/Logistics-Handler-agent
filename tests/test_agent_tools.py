@@ -106,3 +106,28 @@ def test_routing_estimate_labeling(temp_db):
     assert est["data"]["is_simulated"] is True
     assert "Simulated Logistics Estimation Engine" in est["data"]["provider"]
     assert est["data"]["estimated_distance_km"] == 346
+
+
+def test_google_adk_agent_definition():
+    """Verify that Google ADK Agent is imported, configured with Gemini, and tools are registered."""
+    import google.adk as adk
+    from logistics.agent import build_adk_agent, GOOGLE_ADK_TOOLS
+    from logistics.config import GEMINI_MODEL
+
+    agent = build_adk_agent(model=GEMINI_MODEL)
+    assert isinstance(agent, adk.Agent)
+    assert agent.name == "GoogleADKLogisticsCoordinator"
+    assert agent.model == GEMINI_MODEL
+    assert len(agent.tools) == 7
+    assert "adk_check_inventory" in [t.__name__ for t in GOOGLE_ADK_TOOLS]
+    assert "adk_create_shipment" in [t.__name__ for t in GOOGLE_ADK_TOOLS]
+
+
+def test_coordinator_agent_demo_fallback(temp_db):
+    """Verify LogisticsCoordinatorAgent runs in demo mode when Google credentials are unconfigured."""
+    coordinator = LogisticsCoordinatorAgent(api_key="")
+    assert coordinator.is_ai_mode_active is False
+    res = coordinator.run("Check stock for 10 laptops.", db_path=temp_db)
+    assert "Stock Availability Check" in res["response"]
+    assert "Laptop" in res["response"]
+

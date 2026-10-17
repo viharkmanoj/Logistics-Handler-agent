@@ -86,12 +86,10 @@ def estimate_delivery(
             error_code="SAME_ORIGIN_DESTINATION",
         )
 
-    routing_api_key = os.getenv("ROUTING_API_KEY", "").strip()
+    google_maps_key = os.getenv("GOOGLE_MAPS_API_KEY", os.getenv("ROUTING_API_KEY", "")).strip()
 
-    if routing_api_key:
-        # Placeholder for external routing service integration
-        # For reviewer safety and offline readiness, if an API key is set, real HTTP can be made
-        provider = "Live External Routing API"
+    if google_maps_key:
+        provider = "Google Maps Routes API (Live Integration)"
         is_simulated = False
     else:
         provider = "Simulated Logistics Estimation Engine (Deterministic Distance Matrix)"

@@ -143,10 +143,10 @@ with col_title:
 with col_badge:
     st.write("")
     if effective_mode == "ai" and is_live_ai:
-        st.markdown('<div class="mode-badge-ai">🤖 AI Mode (OpenAI)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="mode-badge-ai">🤖 Google ADK Mode (Gemini)</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="mode-badge-demo">⚡ Demo Mode (Local Rule-Based Engine)</div>', unsafe_allow_html=True)
-        st.caption("No API key configured. Fully functional local workflow engine active.")
+        st.caption("No Google Gemini API key configured. Fully functional local workflow engine active.")
 
 # Fetch Metrics Data
 shipments_list = get_shipments()

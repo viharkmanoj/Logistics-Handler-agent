@@ -11,13 +11,13 @@ flowchart TD
     ExternalMCP[MCP Client / Host] -->|JSON-RPC Tools| MCPServer[Model Context Protocol Server]
 
     subgraph Agent Layer
-        Agent -->|Checks OPENAI_API_KEY| ModeRouter{API Key Configured?}
-        ModeRouter -->|Yes| OpenAIAgent[OpenAI Tool-Calling Agent]
+        Agent -->|Checks GEMINI_API_KEY| ModeRouter{Google API Key Configured?}
+        ModeRouter -->|Yes| ADKGeminiAgent[Google ADK Agent - Gemini Model]
         ModeRouter -->|No| DemoEngine[Deterministic Intent & Workflow Engine]
     end
 
     subgraph Self-Healing & Recovery Layer
-        OpenAIAgent --> ExecRecovery[execute_with_recovery Engine]
+        ADKGeminiAgent --> ExecRecovery[execute_with_recovery Engine]
         DemoEngine --> ExecRecovery
         MCPServer --> ExecRecovery
         StreamlitUI --> ExecRecovery
@@ -28,14 +28,14 @@ flowchart TD
     subgraph Logistics Core Domain Tools
         ExecRecovery --> ToolInv[check_inventory / get_inventory]
         ExecRecovery --> ToolShip[create_shipment / track_shipment / update_shipment_status]
-        ExecRecovery --> ToolRoute[estimate_delivery]
+        ExecRecovery --> ToolRoute[estimate_delivery - Google Maps / Simulated Fallback]
         ExecRecovery --> ToolAudit[get_agent_activity]
     end
 
     subgraph Data & Persistence Layer
         ToolInv -->|Atomic Transactions| SQLite[(SQLite Database - WAL Mode)]
         ToolShip -->|ACID Guarantees| SQLite
-        ToolRoute --> DistanceMatrix[(Deterministic Routing Matrix)]
+        ToolRoute --> DistanceMatrix[(Deterministic Routing Matrix / Google Maps)]
         ToolAudit --> ActivityLogs[(agent_activity Table)]
     end
 ```
@@ -44,10 +44,11 @@ flowchart TD
 
 ## 2. Core Components
 
-### 2.1 Logistics Coordinator Agent (`logistics/agent.py`)
+### 2.1 Google ADK Logistics Coordinator Agent (`logistics/agent.py`)
+- **Primary Framework**: Built on **Google ADK (Agent Development Kit - `google-adk`)** and powered by **Google Gemini** (`gemini-2.5-flash` / `gemini-1.5-flash`).
 - **Dual Operating Modes**:
-  1. **AI Mode**: Integrates with OpenAI tool-calling framework using GPT-4o-mini. Converts natural language queries into structured tool execution sequences, dynamically chains outputs, and synthesizes human-friendly operational summaries.
-  2. **Demo Mode**: Active when `OPENAI_API_KEY` is absent or when Demo Mode is explicitly selected. Leverages a deterministic intent parser and entity extractor that executes the exact same underlying tools and workflows.
+  1. **Google ADK Mode**: Connects via `google.adk.Agent` and `google.adk.Runner` with Gemini models. Automatically binds type-annotated domain tools (`GOOGLE_ADK_TOOLS`), interprets natural language instructions, executes multi-step workflows, and synthesizes operational summaries.
+  2. **Demo Mode**: Active when `GEMINI_API_KEY` / `GOOGLE_API_KEY` is unconfigured or when Demo Mode is explicitly selected. Leverages a local deterministic intent parser and entity extractor that executes the exact same underlying tools and workflows.
 - **Strict Grounding Guarantees**:
   - Never invents shipment IDs or stock numbers.
   - Never claims a shipment was created unless verified in the SQLite database.

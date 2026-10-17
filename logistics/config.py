@@ -13,8 +13,11 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_DB_PATH = os.getenv("LOGISTICS_DB_PATH", str(BASE_DIR / "data" / "logistics.db"))
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+# Google Gemini & Google ADK Configuration
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("GOOGLE_API_KEY", "")).strip()
+GOOGLE_API_KEY = GEMINI_API_KEY
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", os.getenv("ROUTING_API_KEY", "")).strip()
 
 # Mode: 'auto', 'ai', or 'demo'
 AGENT_MODE = os.getenv("AGENT_MODE", "auto").lower()
