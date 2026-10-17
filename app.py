@@ -9,7 +9,6 @@ import pandas as pd
 from datetime import datetime
 
 from logistics.config import (
-    OPENAI_API_KEY,
     STATUS_CREATED,
     STATUS_IN_TRANSIT,
     STATUS_OUT_FOR_DELIVERY,
